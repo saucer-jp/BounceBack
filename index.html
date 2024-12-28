@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BounceBack</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden; /* スクロールバーを非表示 */
+      font-family: Arial, sans-serif;
+      position: relative;
+      background: black; /* 背景を黒に設定 */
+    }
+    canvas {
+      display: block;
+      z-index: 0; /* Canvasを背面に配置 */
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .controls {
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10; /* UIをCanvasの前面に表示 */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .timer {
+      font-size: 400px; /* タイマーの文字サイズを400pxに設定 */
+      font-weight: bold;
+      font-family: ui-monospace, monospace; /* 書体をui-monospaceに設定 */
+      color: #fff1; /* 半透明の白色 */
+      text-align: center;
+      line-height: 1; /* テキストの縦位置を調整 */
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.2); /* 半透明の罫線 */
+      background: none; /* 背景色を削除 */
+      color: white; /* ボタンテキストを白に */
+      transition: border-color 0.2s;
+    }
+    button:hover {
+      border-color: rgba(255, 255, 255, 0.5); /* ホバー時の罫線色を明るく */
+    }
+    label {
+      font-size: 14px;
+      font-weight: bold;
+      color: white; /* ラベルを白に */
+    }
+    span {
+      color: white; /* スライダーの数値を白に設定 */
+      font-size: 14px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <div class="timer" id="timer">00:00</div>
+    <div class="row">
+      <button id="toggleBtn">スタート</button>
+    </div>
+    <div class="row">
+      <label>速度調節:</label>
+      <input type="range" id="speedControl" min="1" max="100" value="70" step="1">
+      <span id="speedValue">70</span>
+    </div>
+  </div>
+  <canvas id="myCanvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('myCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // ウィンドウサイズに合わせてCanvasをリサイズ
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resizeCanvas(); // 初回呼び出し
+    window.addEventListener('resize', resizeCanvas); // ウィンドウリサイズ時に更新
+
+    // 円の初期設定
+    let x = 100; // X座標
+    let y = 100; // Y座標
+    let speed = 70; // 初期速度
+    let angle = 2; // 初期角度
+    let radius = 100; // 初期サイズ
+    let dx = speed * Math.cos((angle * Math.PI) / 180); // X方向の速度成分
+    let dy = speed * Math.sin((angle * Math.PI) / 180); // Y方向の速度成分
+
+    // アニメーション制御用変数
+    let animationId = null;
+
+    // タイマー制御用変数
+    let timerInterval = null;
+    let angleToggleInterval = null;
+    let elapsedTime = 0; // 経過時間（秒）
+
+    // DOM要素の取得
+    const timerDisplay = document.getElementById('timer');
+    const speedControl = document.getElementById('speedControl');
+    const speedValue = document.getElementById('speedValue');
+    const toggleBtn = document.getElementById('toggleBtn');
+
+    // タイマー更新関数
+    function updateTimer() {
+      elapsedTime += 1;
+      const minutes = String(Math.floor(elapsedTime / 60)).padStart(2, '0');
+      const seconds = String(elapsedTime % 60).padStart(2, '0');
+      timerDisplay.textContent = `${minutes}:${seconds}`;
+
+      // 3分（180秒）経過で停止
+      if (elapsedTime >= 180) {
+        stopAnimation();
+        alert("3分が経過したのでアニメーションを停止しました。");
+      }
+    }
+
+    // スピード調節イベント
+    speedControl.addEventListener('input', () => {
+      speed = parseInt(speedControl.value, 10);
+      updateMovement(); // 速度変更時に移動方向を更新
+      speedValue.textContent = speed;
+    });
+
+    // 移動速度を更新
+    function updateMovement() {
+      dx = speed * Math.cos((angle * Math.PI) / 180);
+      dy = speed * Math.sin((angle * Math.PI) / 180);
+    }
+
+    // 角度を30秒ごとに自動切り替え
+    function toggleAngle() {
+      angle = angle === 2 ? 93 : 2;
+      updateMovement(); // 角度変更時にも移動を更新
+    }
+
+    // 円を描画する関数
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 円を描画
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = 'white'; // 円を白に設定
+      ctx.fill();
+      ctx.closePath();
+
+      // 円の位置を更新
+      x += dx;
+      y += dy;
+
+      // 壁にぶつかったら跳ね返る
+      if (x + radius > canvas.width || x - radius < 0) {
+        dx = -dx;
+      }
+      if (y + radius > canvas.height || y - radius < 0) {
+        dy = -dy;
+      }
+
+      animationId = requestAnimationFrame(draw);
+    }
+
+    // アニメーション開始
+    function startAnimation() {
+      elapsedTime = 0; // タイマーリセット
+      timerDisplay.textContent = '00:00';
+      timerInterval = setInterval(updateTimer, 1000);
+      angleToggleInterval = setInterval(toggleAngle, 30000); // 30秒ごとに角度切り替え
+      draw();
+      toggleBtn.textContent = "ストップ";
+    }
+
+    // アニメーション停止
+    function stopAnimation() {
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+        clearInterval(timerInterval);
+        clearInterval(angleToggleInterval);
+        toggleBtn.textContent = "スタート";
+      }
+    }
+
+    // アニメーションのトグル
+    toggleBtn.addEventListener('click', () => {
+      if (animationId) {
+        stopAnimation();
+      } else {
+        startAnimation();
+      }
+    });
+
+    // キーボードショートカットの設定
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault(); // スクロールを防止
+        if (animationId) {
+          stopAnimation();
+        } else {
+          startAnimation();
+        }
+      } else if (e.code === 'KeyF') {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+    });
+  </script>
+</body>
+</html>
