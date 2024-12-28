@@ -128,20 +128,22 @@
     // スピード調節イベント
     speedControl.addEventListener('input', () => {
       speed = parseInt(speedControl.value, 10);
-      updateMovement(); // 速度変更時に移動方向を更新
+      normalizeDirection(); // 移動方向を保持しつつ速度変更
       speedValue.textContent = speed;
     });
 
-    // 移動速度を更新
-    function updateMovement() {
-      dx = speed * Math.cos((angle * Math.PI) / 180);
-      dy = speed * Math.sin((angle * Math.PI) / 180);
+    // 方向を保持して移動を更新
+    function normalizeDirection() {
+      const magnitude = Math.sqrt(dx * dx + dy * dy);
+      dx = (dx / magnitude) * speed;
+      dy = (dy / magnitude) * speed;
     }
 
     // 角度を30秒ごとに自動切り替え
     function toggleAngle() {
       angle = angle === 2 ? 93 : 2;
-      updateMovement(); // 角度変更時にも移動を更新
+      dx = speed * Math.cos((angle * Math.PI) / 180);
+      dy = speed * Math.sin((angle * Math.PI) / 180);
     }
 
     // 円を描画する関数
